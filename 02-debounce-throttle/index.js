@@ -9,21 +9,18 @@
  * @returns {Function} The debounced function with a cancel() method
  */
 function debounce(fn, delay) {
-  // TODO: Implement debounce
+  let timerId;
 
-  // Step 1: Create a variable to store the timeout ID
+  function wrapper(...args) {
+    clearTimeout(timerId);
+    timerId = setTimeout(() => fn.apply(this, args), delay);
+  }
 
-  // Step 2: Create the debounced function that:
-  //   - Clears any existing timeout
-  //   - Sets a new timeout to call fn after delay
-  //   - Preserves `this` context and arguments
+  wrapper.cancel = function () {
+    clearTimeout(timerId);
+  };
 
-  // Step 3: Add a cancel() method to clear pending timeout
-
-  // Step 4: Return the debounced function
-
-  // Return a placeholder that doesn't work
-  throw new Error("Not implemented");
+  return wrapper;
 }
 
 /**
@@ -37,23 +34,34 @@ function debounce(fn, delay) {
  * @returns {Function} The throttled function with a cancel() method
  */
 function throttle(fn, limit) {
-  // TODO: Implement throttle
+  let isThrottled = false;
+  let lastThis = null;
+  let lastArgs = null;
+  let timerId;
 
-  // Step 1: Create variables to track:
-  //   - Whether we're currently in a throttle period
-  //   - The timeout ID for cleanup
+  function wrapper(...args) {
+    lastThis = this;
+    lastArgs = args;
 
-  // Step 2: Create the throttled function that:
-  //   - If not throttling, execute fn immediately and start throttle period
-  //   - If throttling, ignore the call
-  //   - Preserves `this` context and arguments
+    if (isThrottled) return;
 
-  // Step 3: Add a cancel() method to reset throttle state
+    fn.apply(lastThis, lastArgs);
+    lastThis = lastArgs = null;
+    isThrottled = true;
 
-  // Step 4: Return the throttled function
+    timerId = setTimeout(() => {
+      isThrottled = false;
+      if (lastThis !== null) wrapper.apply(lastThis, lastArgs);
+    }, limit);
+  }
 
-  // Return a placeholder that doesn't work
-  throw new Error("Not implemented");
+  wrapper.cancel = function () {
+    clearTimeout(timerId);
+    lastThis = lastArgs = null;
+    isThrottled = false;
+  };
+
+  return wrapper;
 }
 
 module.exports = { debounce, throttle };
