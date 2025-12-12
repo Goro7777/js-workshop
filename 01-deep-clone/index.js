@@ -9,33 +9,49 @@
  * @returns {*} A deep clone of the input value
  */
 function deepClone(value, visited = new WeakMap()) {
-  // TODO: Implement deep cloning
+  // Primitives
+  if (typeof value !== "object" || value === null) return value;
 
-  // Step 1: Handle primitives (return as-is)
-  // Primitives: null, undefined, number, string, boolean, symbol, bigint
+  // Circular references
+  if (visited.has(value)) return visited.get(value);
 
-  // Step 2: Check for circular references using the visited WeakMap
-  // If we've seen this object before, return the cached clone
+  if (value instanceof Date) return new Date(value);
+  if (value instanceof RegExp) return new RegExp(value);
 
-  // Step 3: Handle Date objects
-  // Create a new Date with the same time value
+  if (value instanceof Map) {
+    const copy = new Map();
+    visited.set(value, copy);
+    for (const [key, elem] of value) {
+      copy.set(deepClone(key, visited), deepClone(elem, visited));
+    }
+    return copy;
+  }
 
-  // Step 4: Handle RegExp objects
-  // Create a new RegExp with the same source and flags
+  if (value instanceof Set) {
+    const copy = new Set();
+    visited.set(value, copy);
+    for (const elem of value) {
+      copy.add(deepClone(elem, visited));
+    }
+    return copy;
+  }
 
-  // Step 5: Handle Map objects
-  // Create a new Map and deep clone each key-value pair
+  if (Array.isArray(value)) {
+    const copy = [];
+    visited.set(value, copy);
+    for (const elem of value) {
+      copy.push(deepClone(elem, visited));
+    }
+    return copy;
+  }
 
-  // Step 6: Handle Set objects
-  // Create a new Set and deep clone each value
-
-  // Step 7: Handle Arrays
-  // Create a new array and deep clone each element
-
-  // Step 8: Handle plain Objects
-  // Create a new object and deep clone each property
-
-  return undefined; // Broken: Replace with your implementation
+  // Plain object
+  const copy = Object.create(Object.getPrototypeOf(value));
+  visited.set(value, copy);
+  for (const [key, elem] of Object.entries(value)) {
+    copy[key] = deepClone(elem, visited);
+  }
+  return copy;
 }
 
 module.exports = { deepClone };
