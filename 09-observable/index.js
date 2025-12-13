@@ -9,8 +9,7 @@ class Observable {
    * @param {Function} subscribeFn - Function called with subscriber on subscribe
    */
   constructor(subscribeFn) {
-    // TODO: Store the subscribe function
-    // this._subscribeFn = subscribeFn;
+    this._subscribeFn = subscribeFn;
   }
 
   /**
@@ -19,23 +18,37 @@ class Observable {
    * @returns {Object} Subscription with unsubscribe method
    */
   subscribe(observer) {
-    // TODO: Implement subscribe
+    if (typeof observer === "function") observer = { next: observer };
 
-    // Step 1: Normalize observer (handle function shorthand)
-    // If observer is a function, wrap it: { next: observer }
+    let isActive = true;
+    const subscriber = {
+      next(value) {
+        if (!isActive) return;
 
-    // Step 2: Create a subscriber object that:
-    //   - Has next, error, complete methods
-    //   - Tracks if completed/errored (stops accepting values)
-    //   - Calls observer methods when appropriate
+        observer.next(value);
+      },
+      error(err) {
+        if (!isActive) return;
 
-    // Step 3: Call the subscribe function with the subscriber
+        isActive = false;
+        if (typeof observer.error === "function") observer.error(err);
+      },
+      complete() {
+        if (!isActive) return;
 
-    // Step 4: Handle cleanup function returned by subscribeFn
+        isActive = false;
+        if (typeof observer.complete === "function") observer.complete();
+      },
+    };
 
-    // Step 5: Return subscription object with unsubscribe method
+    const cleanupFn = this._subscribeFn(subscriber);
 
-    throw new Error("Not implemented");
+    return {
+      unsubscribe: () => {
+        if (typeof cleanupFn === "function") cleanupFn();
+        isActive = false;
+      },
+    };
   }
 
   /**
@@ -44,14 +57,22 @@ class Observable {
    * @returns {Observable} New Observable with transformed values
    */
   map(fn) {
-    // TODO: Implement map operator
+    const source = this;
+    return new Observable((subscriber) => {
+      const sourceSubscription = source.subscribe({
+        next(value) {
+          subscriber.next(fn(value));
+        },
+        error(err) {
+          subscriber.error(err);
+        },
+        complete() {
+          subscriber.complete();
+        },
+      });
 
-    // Return new Observable that:
-    // - Subscribes to source (this)
-    // - Calls fn on each value
-    // - Emits transformed value
-
-    return new Observable(() => {}); // Broken: Replace with implementation
+      return () => sourceSubscription.unsubscribe();
+    });
   }
 
   /**
@@ -60,13 +81,22 @@ class Observable {
    * @returns {Observable} New Observable with filtered values
    */
   filter(predicate) {
-    // TODO: Implement filter operator
+    const source = this;
+    return new Observable((subscriber) => {
+      const sourceSubscription = source.subscribe({
+        next(value) {
+          if (predicate(value)) subscriber.next(value);
+        },
+        error(err) {
+          subscriber.error(err);
+        },
+        complete() {
+          subscriber.complete();
+        },
+      });
 
-    // Return new Observable that:
-    // - Subscribes to source (this)
-    // - Only emits values where predicate returns true
-
-    return new Observable(() => {}); // Broken: Replace with implementation
+      return () => sourceSubscription.unsubscribe();
+    });
   }
 
   /**
@@ -75,14 +105,28 @@ class Observable {
    * @returns {Observable} New Observable limited to count values
    */
   take(count) {
-    // TODO: Implement take operator
+    const source = this;
+    let emittedCount = 0;
+    return new Observable((subscriber) => {
+      const sourceSubscription = source.subscribe({
+        next(value) {
+          if (emittedCount === count) {
+            this.complete();
+          } else {
+            emittedCount++;
+            subscriber.next(value);
+          }
+        },
+        error(err) {
+          subscriber.error(err);
+        },
+        complete() {
+          subscriber.complete();
+        },
+      });
 
-    // Return new Observable that:
-    // - Subscribes to source (this)
-    // - Emits first `count` values
-    // - Completes after `count` values
-
-    return new Observable(() => {}); // Broken: Replace with implementation
+      return () => sourceSubscription.unsubscribe();
+    });
   }
 
   /**
@@ -91,14 +135,27 @@ class Observable {
    * @returns {Observable} New Observable that skips first count values
    */
   skip(count) {
-    // TODO: Implement skip operator
+    const source = this;
+    let skippedCount = 0;
+    return new Observable((subscriber) => {
+      const sourceSubscription = source.subscribe({
+        next(value) {
+          if (skippedCount === count) {
+            subscriber.next(value);
+          } else {
+            skippedCount++;
+          }
+        },
+        error(err) {
+          subscriber.error(err);
+        },
+        complete() {
+          subscriber.complete();
+        },
+      });
 
-    // Return new Observable that:
-    // - Subscribes to source (this)
-    // - Ignores first `count` values
-    // - Emits remaining values
-
-    return new Observable(() => {}); // Broken: Replace with implementation
+      return () => sourceSubscription.unsubscribe();
+    });
   }
 
   /**
@@ -107,15 +164,9 @@ class Observable {
    * @returns {Observable} Observable that emits array values
    */
   static from(array) {
-    // TODO: Implement from
-
-    // Return new Observable that:
-    // - Emits each array element
-    // - Completes after last element
-
     return new Observable((subscriber) => {
-      // subscriber.next(...) for each
-      // subscriber.complete()
+      array.forEach((value) => subscriber.next(value));
+      subscriber.complete();
     });
   }
 
@@ -125,10 +176,6 @@ class Observable {
    * @returns {Observable} Observable that emits single value
    */
   static of(...values) {
-    // TODO: Implement of
-
-    // Return new Observable that emits all values then completes
-
     return Observable.from(values);
   }
 }
