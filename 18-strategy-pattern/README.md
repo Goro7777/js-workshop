@@ -96,6 +96,47 @@ class RegularPricing { calculate(items) { /* no discount */ } }
 class PercentageDiscount { calculate(items) { /* % off */ } }
 class FixedDiscount { calculate(items) { /* fixed amount off */ } }
 class BuyOneGetOneFree { calculate(items) { /* BOGO */ } }
+class TieredDiscount { calculate(items) { /* tiered % based on total */ } }
+```
+
+### Implement: Validation Strategies
+
+```javascript
+class ValidationContext {
+  constructor(strategy);
+  setStrategy(strategy);
+  validate(data);
+}
+
+// Strategies - both return { valid: boolean, errors: array }
+class StrictValidation {
+  validate(data) {
+    // Requires all three fields to be present and valid:
+    // - name: must be a non-empty string
+    // - email: must be a non-empty string (no regex validation required)
+    // - age: must be a number (any number is valid, no range check required)
+    //
+    // Returns { valid: false, errors: [...] } if any field is missing or invalid
+    // Returns { valid: true, errors: [] } if all fields are present and valid
+  }
+}
+
+class LenientValidation {
+  validate(data) {
+    // Accepts any data, including empty objects
+    // No validation rules - always returns { valid: true, errors: [] }
+  }
+}
+```
+
+### Implement: Strategy Registry
+
+```javascript
+class StrategyRegistry {
+  register(name, strategy);
+  get(name);
+  has(name);
+}
 ```
 
 ## Examples
@@ -126,10 +167,29 @@ pricing.calculateTotal(items); // 100
 
 // Validation strategies
 const validator = new ValidationContext(new StrictValidation());
-validator.validate(data);
 
+// Strict validation - requires all three fields (name, email, age)
+validator.validate({ name: "John", email: "john@example.com", age: 25 });
+// { valid: true, errors: [] }
+
+validator.validate({ name: "" });
+// { valid: false, errors: [...] }
+// Missing email and age, empty name
+
+validator.validate({ name: "John", email: "john@example.com" });
+// { valid: false, errors: [...] }
+// Missing age field
+
+// Lenient validation - accepts anything
 validator.setStrategy(new LenientValidation());
-validator.validate(data);
+validator.validate({});
+// { valid: true, errors: [] }
+
+validator.validate({ name: "John" });
+// { valid: true, errors: [] }
+
+validator.validate({ anything: "goes" });
+// { valid: true, errors: [] }
 ```
 
 ## Hints

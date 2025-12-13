@@ -183,21 +183,31 @@ class ValidationContext {
 
 /**
  * Strict Validation
+ *
+ * Requires all three fields to be present and valid:
+ * - name: must be a non-empty string
+ * - email: must be a non-empty string (no regex validation required)
+ * - age: must be a number (any number is valid, no range check required)
  */
 class StrictValidation {
   validate(data) {
-    // TODO: Strict rules - all fields required, strict format
+    // TODO: Validate that name, email, and age are all present and valid
     // Return { valid: boolean, errors: string[] }
+    // Example: { valid: false, errors: ["Name is required", "Email is required"] }
     throw new Error("Not implemented");
   }
 }
 
 /**
  * Lenient Validation
+ *
+ * Accepts any data, including empty objects.
+ * No validation rules - always passes.
  */
 class LenientValidation {
   validate(data) {
-    // TODO: Lenient rules - only critical fields required
+    // TODO: Always return valid: true, errors: []
+    // This strategy has no validation rules
     return { valid: false, errors: ["Not implemented"] }; // Broken: Replace with implementation
   }
 }
