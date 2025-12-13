@@ -11,47 +11,54 @@
  * @returns {Function} Memoized function with cache control methods
  */
 function memoize(fn, options = {}) {
-  // TODO: Implement memoization
+  const cache = new Map();
+  const {
+    maxSize,
+    ttl,
+    keyGenerator = (args) => JSON.stringify(args),
+  } = options;
 
-  // Step 1: Extract options with defaults
-  // const { maxSize, ttl, keyGenerator } = options;
-
-  // Step 2: Create the cache (use Map for ordered keys)
-  // const cache = new Map();
-
-  // Step 3: Create default key generator
-  // Default: JSON.stringify(args) or args.join(',')
-
-  // Step 4: Create the memoized function
-  // - Generate cache key from arguments
-  // - Check if key exists and is not expired (TTL)
-  // - If cached, return cached value
-  // - If not cached, call fn and store result
-  // - Handle maxSize eviction (remove oldest)
-
-  // Step 5: Add cache control methods
-  // memoized.cache = {
-  //   clear: () => cache.clear(),
-  //   delete: (key) => cache.delete(key),
-  //   has: (key) => cache.has(key),
-  //   get size() { return cache.size; }
-  // };
-
-  // Step 6: Return memoized function
-
-  // Return placeholder that doesn't work
-  const memoized = function () {
-    return undefined;
+  const deleteFromCache = (key) => {
+    const { timerId } = cache.get(key) || {};
+    clearTimeout(timerId);
+    cache.delete(key);
   };
-  memoized.cache = {
-    clear: () => {},
-    delete: () => false,
-    has: () => false,
+
+  const addToCache = (key, val) => {
+    let timerId;
+    if (ttl) timerId = setTimeout(() => deleteFromCache(key), ttl);
+    cache.set(key, { val, timerId });
+  };
+
+  function wrapper(...args) {
+    const key = keyGenerator(args);
+
+    if (!cache.has(key)) {
+      if (maxSize && cache.size === maxSize) {
+        const oldestKey = cache.keys().next().value;
+        deleteFromCache(oldestKey);
+      }
+
+      const val = fn.apply(this, args);
+      addToCache(key, val);
+    }
+
+    return cache.get(key).val;
+  }
+
+  wrapper.cache = {
+    clear: () => {
+      const keys = [...cache.keys()];
+      for (const key of keys) deleteFromCache(key);
+    },
+    delete: (key) => deleteFromCache(key),
+    has: (key) => cache.has(key),
     get size() {
-      return -1;
+      return cache.size;
     },
   };
-  return memoized;
+
+  return wrapper;
 }
 
 module.exports = { memoize };
