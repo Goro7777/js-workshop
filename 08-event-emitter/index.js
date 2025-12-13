@@ -5,8 +5,7 @@
  */
 class EventEmitter {
   constructor() {
-    // TODO: Initialize event storage
-    // this.events = new Map(); // or {}
+    this.events = new Map();
   }
 
   /**
@@ -16,15 +15,12 @@ class EventEmitter {
    * @returns {EventEmitter} this (for chaining)
    */
   on(event, listener) {
-    // TODO: Implement on
+    if (!this.events.has(event)) this.events.set(event, []);
 
-    // Step 1: Get or create the listeners array for this event
+    const listeners = this.events.get(event);
+    listeners.push(listener);
 
-    // Step 2: Add the listener to the array
-
-    // Step 3: Return this for chaining
-
-    return null; // Broken: should return this
+    return this;
   }
 
   /**
@@ -34,16 +30,16 @@ class EventEmitter {
    * @returns {EventEmitter} this (for chaining)
    */
   off(event, listener) {
-    // TODO: Implement off
+    if (this.events.has(event)) {
+      const listeners = this.events.get(event);
+      const index = listeners.findIndex(
+        (activeListener) =>
+          activeListener === listener || activeListener._original === listener
+      );
+      if (index !== -1) listeners.splice(index, 1);
+    }
 
-    // Step 1: Get the listeners array for this event
-
-    // Step 2: Find and remove the listener
-    // Note: Handle wrapped 'once' listeners
-
-    // Step 3: Return this for chaining
-
-    return null; // Broken: should return this
+    return this;
   }
 
   /**
@@ -53,18 +49,12 @@ class EventEmitter {
    * @returns {boolean} true if event had listeners
    */
   emit(event, ...args) {
-    // TODO: Implement emit
+    if (!this.events.has(event)) return false;
 
-    // Step 1: Get the listeners array for this event
+    const listeners = [...this.events.get(event)];
+    for (let listener of listeners) listener(...args);
 
-    // Step 2: If no listeners, return false
-
-    // Step 3: Call each listener with the arguments
-    // Make a copy of the array to handle removals during emit
-
-    // Step 4: Return true
-
-    throw new Error("Not implemented");
+    return true;
   }
 
   /**
@@ -74,19 +64,17 @@ class EventEmitter {
    * @returns {EventEmitter} this (for chaining)
    */
   once(event, listener) {
-    // TODO: Implement once
+    function wrapper(...args) {
+      listener(...args);
+      this.off(event, listener);
+    }
 
-    // Step 1: Create a wrapper function that:
-    //   - Removes itself after being called
-    //   - Calls the original listener with arguments
+    const boundWrapper = wrapper.bind(this);
+    boundWrapper._original = listener;
 
-    // Step 2: Store reference to original listener for 'off' to work
+    this.on(event, boundWrapper);
 
-    // Step 3: Register the wrapper with 'on'
-
-    // Step 4: Return this for chaining
-
-    return null; // Broken: should return this
+    return this;
   }
 
   /**
@@ -95,12 +83,13 @@ class EventEmitter {
    * @returns {EventEmitter} this (for chaining)
    */
   removeAllListeners(event) {
-    // TODO: Implement removeAllListeners
+    if (event) {
+      this.events.delete(event);
+    } else {
+      this.events.clear();
+    }
 
-    // If event is provided, remove only that event's listeners
-    // If no event, clear all events
-
-    return null; // Broken: should return this
+    return this;
   }
 
   /**
@@ -109,11 +98,7 @@ class EventEmitter {
    * @returns {Function[]} Array of listener functions
    */
   listeners(event) {
-    // TODO: Implement listeners
-
-    // Return copy of listeners array, or empty array if none
-
-    throw new Error("Not implemented");
+    return [...(this.events.get(event) || [])];
   }
 
   /**
@@ -122,9 +107,7 @@ class EventEmitter {
    * @returns {number} Listener count
    */
   listenerCount(event) {
-    // TODO: Implement listenerCount
-
-    throw new Error("Not implemented");
+    return this.events.get(event)?.length || 0;
   }
 }
 
