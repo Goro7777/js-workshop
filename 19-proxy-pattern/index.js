@@ -10,29 +10,17 @@
  * @returns {Proxy} Proxy that validates on set
  */
 function createValidatingProxy(target, validators) {
-  // TODO: Implement validating proxy
-
-  // Create a Proxy with a handler that:
-  // - On 'set': check if validator exists for property
-  //   - If validator returns false, throw Error
-  //   - Otherwise, set the property
-  // - On 'get': return property value normally
-
   return new Proxy(target, {
     set(obj, prop, value) {
-      // TODO: Implement set trap
-      // Check validators[prop](value) if validator exists
-      // Throw if validation fails
-      // Set property if passes
+      if (validators[prop] && !validators[prop](value))
+        throw new Error(`Invalid value for ${prop}: ${JSON.stringify(value)}`);
 
-      // Broken: doesn't set at all (fails all tests)
+      obj[prop] = value;
       return true;
     },
 
     get(obj, prop) {
-      // TODO: Implement get trap
-      // Broken: returns wrong value
-      return "NOT_IMPLEMENTED";
+      return obj[prop];
     },
   });
 }
@@ -45,27 +33,27 @@ function createValidatingProxy(target, validators) {
  * @returns {Proxy} Proxy that logs all operations
  */
 function createLoggingProxy(target, logger) {
-  // TODO: Implement logging proxy
-
   return new Proxy(target, {
     get(obj, prop) {
-      // TODO: Log 'get' and return value
-      throw new Error("Not implemented");
+      logger("get", prop, obj[prop]);
+      return obj[prop];
     },
 
     set(obj, prop, value) {
-      // TODO: Log 'set' and set value
-      throw new Error("Not implemented");
+      logger("set", prop, value);
+      obj[prop] = value;
+      return true;
     },
 
     deleteProperty(obj, prop) {
-      // TODO: Log 'delete' and delete property
-      throw new Error("Not implemented");
+      logger("delete", prop, obj[prop]);
+      delete obj[prop];
+      return true;
     },
 
     has(obj, prop) {
-      // TODO: Log 'has' and return result
-      throw new Error("Not implemented");
+      logger("has", prop, obj[prop]);
+      return obj.hasOwnProperty(prop);
     },
   });
 }
@@ -78,24 +66,30 @@ function createLoggingProxy(target, logger) {
  * @returns {Proxy} Proxy that caches method results
  */
 function createCachingProxy(target, methodNames) {
-  // TODO: Implement caching proxy
-
-  // Create cache storage
-  // const cache = new Map();
+  const methodCache = new Map();
+  const methodNamesSet = new Set(methodNames);
 
   return new Proxy(target, {
     get(obj, prop) {
-      // TODO: Implement get trap
+      if (!methodNamesSet.has(prop) || typeof obj[prop] !== "function")
+        return obj[prop];
 
-      // If prop is in methodNames and is a function:
-      //   Return a wrapped function that:
-      //   - Creates cache key from arguments
-      //   - Returns cached result if exists
-      //   - Otherwise, calls original, caches, and returns
+      if (!methodCache.has(prop)) {
+        const callsCache = new Map();
 
-      // Otherwise, return property normally
+        function wrapper(...args) {
+          const key = JSON.stringify(args);
+          if (!callsCache.has(key)) {
+            const value = obj[prop](...args);
+            callsCache.set(key, value);
+          }
+          return callsCache.get(key);
+        }
 
-      throw new Error("Not implemented");
+        methodCache.set(prop, wrapper);
+      }
+
+      return methodCache.get(prop);
     },
   });
 }
@@ -110,28 +104,31 @@ function createCachingProxy(target, methodNames) {
  * @returns {Proxy} Proxy that enforces access control
  */
 function createAccessProxy(target, permissions) {
-  // TODO: Implement access control proxy
-
   const { readable = [], writable = [] } = permissions;
+  const readableSet = new Set(readable);
+  const writableSet = new Set(writable);
 
   return new Proxy(target, {
     get(obj, prop) {
-      // TODO: Check if prop is in readable
-      // Throw if not allowed
-      // Broken: returns wrong value
-      return "NOT_IMPLEMENTED";
+      if (!readableSet.has(prop))
+        throw new Error(`Access denied: Cannot read property '${prop}'`);
+
+      return obj[prop];
     },
 
     set(obj, prop, value) {
-      // TODO: Check if prop is in writable
-      // Throw if not allowed
-      // Broken: doesn't actually set
+      if (!writableSet.has(prop))
+        throw new Error(`Access denied: Cannot write to property '${prop}`);
+
+      obj[prop] = value;
       return true;
     },
 
     deleteProperty(obj, prop) {
-      // TODO: Only allow if in writable
-      // Broken: doesn't delete
+      if (!writableSet.has(prop))
+        throw new Error(`Access denied: Cannot delete property '${prop}`);
+
+      delete obj[prop];
       return true;
     },
   });
@@ -144,8 +141,6 @@ function createAccessProxy(target, permissions) {
  * @returns {Proxy} Proxy that loads object on first access
  */
 function createLazyProxy(loader) {
-  // TODO: Implement lazy loading proxy
-
   let instance = null;
   let loaded = false;
 
@@ -153,17 +148,23 @@ function createLazyProxy(loader) {
     {},
     {
       get(obj, prop) {
-        // TODO: Load instance on first access
-        // if (!loaded) { instance = loader(); loaded = true; }
-        // return instance[prop]
-        throw new Error("Not implemented");
+        if (!loaded) {
+          instance = loader();
+          loaded = true;
+        }
+        return instance[prop];
       },
 
       set(obj, prop, value) {
-        // TODO: Load instance if needed, then set
-        throw new Error("Not implemented");
+        if (!loaded) {
+          instance = loader();
+          loaded = true;
+        }
+
+        instance[prop] = value;
+        return true;
       },
-    },
+    }
   );
 }
 
@@ -175,17 +176,23 @@ function createLazyProxy(loader) {
  * @returns {Proxy} Proxy that notifies on changes
  */
 function createObservableProxy(target, onChange) {
-  // TODO: Implement observable proxy
-
   return new Proxy(target, {
     set(obj, prop, value) {
-      // TODO: Call onChange(prop, value, oldValue) on change
-      throw new Error("Not implemented");
+      const oldValue = obj[prop];
+      if (value !== oldValue) onChange(prop, value, oldValue);
+
+      obj[prop] = value;
+      return true;
     },
 
     deleteProperty(obj, prop) {
-      // TODO: Call onChange on delete
-      throw new Error("Not implemented");
+      if (obj.hasOwnProperty(prop)) {
+        const oldValue = obj[prop];
+        onChange(prop, undefined, oldValue);
+      }
+
+      delete obj[prop];
+      return true;
     },
   });
 }
